@@ -25,7 +25,6 @@
             font-family: 'Inter', system-ui, sans-serif;
             overflow-x: hidden;
         }
-        /* Akıcı geçişler ve ekstra mobil uyumluluk stilleri */
         input::placeholder {
             color: #444;
         }
@@ -118,7 +117,6 @@
         function App() {
           const [activeDay, setActiveDay] = useState(0);
           
-          // Telefonun/Tarayıcının hafızasından verileri geri yükleme mekanizması
           const [weights, setWeights] = useState(() => {
             const saved = localStorage.getItem("gym_weights");
             return saved ? JSON.parse(saved) : {};
@@ -131,7 +129,6 @@
           const [expandedEx, setExpandedEx] = useState(null);
           const [savedToast, setSavedToast] = useState(false);
 
-          // Her veri değiştiğinde otomatik kaydetme (Kullanıcı APK'yı kapatsa bile kaybolmaz)
           useEffect(() => {
             localStorage.setItem("gym_weights", JSON.stringify(weights));
           }, [weights]);
@@ -155,9 +152,6 @@
             setExpandedEx(expandedEx === exIdx ? null : exIdx);
           };
 
-          const completedCount = day.exercises.filter((_, i) => completed[`${day.id}-${i}`]).length;
-          const progress = Math.round((completedCount / day.exercises.length) * 100);
-
           const handleSave = () => {
             setSavedToast(true);
             setTimeout(() => setSavedToast(false), 2000);
@@ -171,7 +165,6 @@
               paddingBottom: 60,
             }}>
 
-              {/* Bildirim (Toast) */}
               {savedToast && (
                 <div style={{
                   position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)",
@@ -183,28 +176,33 @@
                 </div>
               )}
 
-              {/* Üst Menü / Gün Seçimi */}
-              <div style={{ background: "#0c0c16", borderBottom: "1px solid #1a1a28", padding: "20px 16px 0" }}>
+              {/* Üst Menü / Özelleştirilmiş Gün Seçim Kartları */}
+              <div style={{ background: "#0c0c16", borderBottom: "1px solid #1a1a28", padding: "20px 16px" }}>
                 <div style={{ maxWidth: 560, margin: "0 auto" }}>
-                  <div style={{ fontSize: 10, letterSpacing: 3, color: "#555", textTransform: "uppercase", marginBottom: 4, fontWeight: 700 }}>
-                    Antrenman Takip
-                  </div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", letterSpacing: -0.5, marginBottom: 16 }}>
-                    5 Günlük Program
-                  </div>
-                  <div style={{ display: "flex", gap: 4 }}>
-                    {DAYS.map((d, i) => (
-                      <button key={d.id} onClick={() => { setActiveDay(i); setExpandedEx(null); }} style={{
-                        flex: 1, background: "none", border: "none", cursor: "pointer",
-                        padding: "8px 4px 12px",
-                        borderBottom: activeDay === i ? `3px solid ${d.color}` : "3px solid transparent",
-                        color: activeDay === i ? "#fff" : "#555",
-                        fontSize: 11, fontWeight: 700, letterSpacing: 1,
-                        transition: "all 0.15s",
-                      }}>
-                        {d.label}
-                      </button>
-                    ))}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {DAYS.map((d, i) => {
+                      const dayCompleted = d.exercises.filter((_, j) => completed[`${d.id}-${j}`]).length;
+                      const dayProgress = Math.round((dayCompleted / d.exercises.length) * 100);
+                      return (
+                        <div key={d.id} onClick={() => { setActiveDay(i); setExpandedEx(null); }} style={{
+                          flex: 1, cursor: "pointer",
+                          background: "#0f0f1c",
+                          border: `1px solid ${activeDay === i ? d.color + "60" : "#1a1a28"}`,
+                          borderRadius: 10, padding: "10px 6px", textAlign: "center",
+                          transition: "all 0.2s"
+                        }}>
+                          <div style={{ fontSize: 9, color: activeDay === i ? d.color : "#666", fontWeight: 700, marginBottom: 6 }}>
+                            {d.label}
+                          </div>
+                          <div style={{ height: 3, background: "#1a1a28", borderRadius: 2, margin: "0 2px" }}>
+                            <div style={{ height: "100%", borderRadius: 2, background: d.color, width: `${dayProgress}%`, transition: "width 0.2s" }} />
+                          </div>
+                          <div style={{ fontSize: 9, color: activeDay === i ? "#fff" : "#444", marginTop: 5, fontWeight: 600 }}>
+                            {dayCompleted}/{d.exercises.length}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -212,26 +210,18 @@
               {/* İçerik Alanı */}
               <div style={{ maxWidth: 560, margin: "0 auto", padding: "16px 16px 0" }}>
 
-                {/* Gün Detayı ve İlerleme Çubuğu */}
+                {/* Gün Detayı Başlığı */}
                 <div style={{
                   background: "#0f0f1c",
-                  border: `1px solid ${day.color}30`,
+                  border: `1px solid #1a1a28`,
                   borderLeft: `4px solid ${day.color}`,
                   borderRadius: 12, padding: "14px 16px", marginBottom: 16,
                 }}>
                   <div style={{ fontSize: 10, color: day.color, letterSpacing: 2, textTransform: "uppercase", fontWeight: 700, marginBottom: 3 }}>
                     {day.full}
                   </div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", marginBottom: 10 }}>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>
                     {day.focus}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ flex: 1, height: 5, background: "#1e1e2e", borderRadius: 2 }}>
-                      <div style={{ height: "100%", borderRadius: 2, background: day.color, width: `${progress}%`, transition: "width 0.3s ease" }} />
-                    </div>
-                    <div style={{ fontSize: 11, color: "#666", whiteSpace: "nowrap", fontWeight: 600 }}>
-                      {completedCount} / {day.exercises.length}
-                    </div>
                   </div>
                 </div>
 
@@ -251,22 +241,21 @@
                         opacity: isDone ? 0.6 : 1, transition: "all 0.2s" 
                       }}>
                         
-                        {/* Tıklanabilir Üst Satır */}
                         <div style={{ padding: "14px", display: "flex", alignItems: "center", gap: 12 }}>
                           
-                          {/* Tamamlandı Butonu (Checkbox) */}
+                          {/* Checkbox */}
                           <div onClick={() => toggleComplete(i)} style={{ 
                             width: 24, height: 24, borderRadius: 8, 
                             border: `2px solid ${isDone ? day.color : "#2a2a3a"}`, 
                             background: isDone ? day.color : "transparent", 
                             flexShrink: 0, cursor: "pointer", display: "flex", 
-                            alignItems: "center(), justifyContent: "center", 
+                            alignItems: "center", justifyContent: "center", 
                             fontSize: 13, color: "#000", fontWeight: 800, transition: "all 0.15s" 
                           }}>
                             {isDone && "✓"}
                           </div>
 
-                          {/* İsim ve Set/Tekrar Bilgisi */}
+                          {/* İsim ve Bilgiler */}
                           <div onClick={() => toggleExpand(i)} style={{ flex: 1, minWidth: 0, cursor: "pointer" }}>
                             <div style={{ 
                               fontSize: 14, fontWeight: 700, 
@@ -277,4 +266,17 @@
                               {ex.name}
                             </div>
                             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                              <span s
+                              <span style={{ fontSize: 11, color: day.color, background: `${day.color}15`, padding: "2px 6px", borderRadius: 4, fontWeight: 600 }}>
+                                {ex.sets}x{ex.reps}
+                              </span>
+                              <span style={{ fontSize: 11, color: "#666" }}>
+                                {ex.target}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* KG Giriş Alanı */}
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <input 
+                              type="text" 
+                
