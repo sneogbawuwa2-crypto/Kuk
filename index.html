@@ -7,12 +7,8 @@
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
     <style>
         * {
             box-sizing: border-box;
@@ -24,6 +20,8 @@
             background: #08080f;
             font-family: 'Inter', system-ui, sans-serif;
             overflow-x: hidden;
+            color: #e2e2e8;
+            padding-bottom: 60px;
         }
         input::placeholder {
             color: #444;
@@ -36,11 +34,23 @@
 </head>
 <body>
 
-    <div id="root"></div>
+    <div id="toast" style="display: none; position: fixed; top: 16px; left: 50%; transform: translateX(-50%); color: #000; padding: 10px 20px; border-radius: 30px; font-size: 13px; font-weight: 700; z-index: 999; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
+        ✓ Kaydedildi
+    </div>
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
+    <div style="background: #0c0c16; border-bottom: 1px solid #1a1a28; padding: 20px 16px;">
+        <div style="max-width: 560px; margin: 0 auto;">
+            <div id="tabs-container" style="display: flex; gap: 6px;"></div>
+        </div>
+    </div>
 
+    <div style="max-width: 560px; margin: 0 auto; padding: 16px 16px 0;">
+        <div id="day-header-container"></div>
+        <div id="exercises-container"></div>
+        <div id="actions-container"></div>
+    </div>
+
+    <script>
         const ytLink = (q) => `https://www.youtube.com/results?search_query=${encodeURIComponent(q + " nasıl yapılır spor")}`;
 
         const DAYS = [
@@ -114,169 +124,156 @@
           },
         ];
 
-        function App() {
-          const [activeDay, setActiveDay] = useState(0);
-          
-          const [weights, setWeights] = useState(() => {
-            const saved = localStorage.getItem("gym_weights");
-            return saved ? JSON.parse(saved) : {};
-          });
-          const [completed, setCompleted] = useState(() => {
-            const saved = localStorage.getItem("gym_completed");
-            return saved ? JSON.parse(saved) : {};
-          });
-          
-          const [expandedEx, setExpandedEx] = useState(null);
-          const [savedToast, setSavedToast] = useState(false);
+        // Durum Yönetimi (State)
+        let activeDay = 0;
+        let weights = JSON.parse(localStorage.getItem("gym_weights")) || {};
+        let completed = JSON.parse(localStorage.getItem("gym_completed")) || {};
+        let expandedEx = null;
 
-          useEffect(() => {
+        function saveToLocalStorage() {
             localStorage.setItem("gym_weights", JSON.stringify(weights));
-          }, [weights]);
-
-          useEffect(() => {
             localStorage.setItem("gym_completed", JSON.stringify(completed));
-          }, [completed]);
+        }
 
-          const day = DAYS[activeDay];
+        function setActiveDay(index) {
+            activeDay = index;
+            expandedEx = null;
+            render();
+        }
 
-          const setWeight = (exIdx, value) => {
-            setWeights(prev => ({ ...prev, [`${day.id}-${exIdx}`]: value }));
-          };
+        function toggleComplete(exIdx) {
+            const key = `${DAYS[activeDay].id}-${exIdx}`;
+            completed[key] = !completed[key];
+            saveToLocalStorage();
+            render();
+        }
 
-          const toggleComplete = (exIdx) => {
-            const key = `${day.id}-${exIdx}`;
-            setCompleted(prev => ({ ...prev, [key]: !prev[key] }));
-          };
+        function toggleExpand(exIdx) {
+            expandedEx = expandedEx === exIdx ? null : exIdx;
+            render();
+        }
 
-          const toggleExpand = (exIdx) => {
-            setExpandedEx(expandedEx === exIdx ? null : exIdx);
-          };
+        function updateWeight(exIdx, val) {
+            const key = `${DAYS[activeDay].id}-${exIdx}`;
+            weights[key] = val;
+            localStorage.setItem("gym_weights", JSON.stringify(weights)); // Değer yazıldıkça anlık kaydeder
+        }
 
-          const handleSave = () => {
-            setSavedToast(true);
-            setTimeout(() => setSavedToast(false), 2000);
-          };
+        function handleSave() {
+            saveToLocalStorage();
+            const day = DAYS[activeDay];
+            const toast = document.getElementById('toast');
+            toast.style.background = day.color;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 2000);
+        }
 
-          return (
-            <div style={{
-              minHeight: "100vh",
-              background: "#08080f",
-              color: "#e2e2e8",
-              paddingBottom: 60,
-            }}>
+        function resetAllData() {
+            if (confirm("Tüm haftalık ilerlemenizi ve girdiğiniz kiloları sıfırlamak istediğinize emin misiniz?")) {
+                weights = {};
+                completed = {};
+                saveToLocalStorage();
+                render();
+            }
+        }
 
-              {savedToast && (
-                <div style={{
-                  position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)",
-                  background: day.color, color: "#000", padding: "10px 20px",
-                  borderRadius: 30, fontSize: 13, fontWeight: 700, zIndex: 999,
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
-                }}>
-                  ✓ Kaydedildi
-                </div>
-              )}
+        // Arayüz Çizim Fonksiyonu (Render)
+        function render() {
+            const day = DAYS[activeDay];
 
-              {/* Üst Menü / Özelleştirilmiş Gün Seçim Kartları */}
-              <div style={{ background: "#0c0c16", borderBottom: "1px solid #1a1a28", padding: "20px 16px" }}>
-                <div style={{ maxWidth: 560, margin: "0 auto" }}>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    {DAYS.map((d, i) => {
-                      const dayCompleted = d.exercises.filter((_, j) => completed[`${d.id}-${j}`]).length;
-                      const dayProgress = Math.round((dayCompleted / d.exercises.length) * 100);
-                      return (
-                        <div key={d.id} onClick={() => { setActiveDay(i); setExpandedEx(null); }} style={{
-                          flex: 1, cursor: "pointer",
-                          background: "#0f0f1c",
-                          border: `1px solid ${activeDay === i ? d.color + "60" : "#1a1a28"}`,
-                          borderRadius: 10, padding: "10px 6px", textAlign: "center",
-                          transition: "all 0.2s"
-                        }}>
-                          <div style={{ fontSize: 9, color: activeDay === i ? d.color : "#666", fontWeight: 700, marginBottom: 6 }}>
-                            {d.label}
-                          </div>
-                          <div style={{ height: 3, background: "#1a1a28", borderRadius: 2, margin: "0 2px" }}>
-                            <div style={{ height: "100%", borderRadius: 2, background: d.color, width: `${dayProgress}%`, transition: "width 0.2s" }} />
-                          </div>
-                          <div style={{ fontSize: 9, color: activeDay === i ? "#fff" : "#444", marginTop: 5, fontWeight: 600 }}>
-                            {dayCompleted}/{d.exercises.length}
-                          </div>
+            // 1. Üst Sekmeleri Çiz
+            let tabsHtml = '';
+            DAYS.forEach((d, i) => {
+                const dayCompleted = d.exercises.filter((_, j) => completed[`${d.id}-${j}`]).length;
+                const dayProgress = Math.round((dayCompleted / d.exercises.length) * 100);
+                const isActive = activeDay === i;
+                tabsHtml += `
+                    <div onclick="setActiveDay(${i})" style="
+                        flex: 1; cursor: pointer;
+                        background: ${isActive ? "#121225" : "#0f0f1c"};
+                        border: 1px solid ${isActive ? d.color : "#1a1a28"};
+                        border-radius: 10px; padding: 12px 6px; text-align: center;
+                        transition: all 0.2s;
+                        box-shadow: ${isActive ? `0 0 10px ${d.color}20` : "none"}
+                    ">
+                        <div style="font-size: 10px; color: ${isActive ? d.color : "#a0a0ab"}; font-weight: 700; margin-bottom: 6px;">
+                            ${d.label}
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div style="height: 3px; background: #1a1a28; border-radius: 2px; margin: 0 2px;">
+                            <div style="height: 100%; border-radius: 2px; background: ${d.color}; width: ${dayProgress}%; transition: width 0.2s;"></div>
+                        </div>
+                        <div style="font-size: 9px; color: ${isActive ? "#ffffff" : "#71717a"}; marginTop: 6px; font-weight: 600; margin-top: 6px;">
+                            ${dayCompleted}/${d.exercises.length}
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('tabs-container').innerHTML = tabsHtml;
+
+            // 2. Gün Başlığını Çiz
+            document.getElementById('day-header-container').innerHTML = `
+                <div style="
+                    background: #0f0f1c;
+                    border: 1px solid #1a1a28;
+                    border-left: 4px solid ${day.color};
+                    border-radius: 12px; padding: 14px 16px; margin-bottom: 16px;
+                ">
+                    <div style="font-size: 10px; color: ${day.color}; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; margin-bottom: 3px;">
+                        ${day.full}
+                    </div>
+                    <div style="font-size: 15px; font-weight: 800; color: #fff;">
+                        ${day.focus}
+                    </div>
                 </div>
-              </div>
+            `;
 
-              {/* İçerik Alanı */}
-              <div style={{ maxWidth: 560, margin: "0 auto", padding: "16px 16px 0" }}>
+            // 3. Egzersizleri Çiz
+            let exercisesHtml = '<div style="display: flex; flex-direction: column; gap: 10px;">';
+            day.exercises.forEach((ex, i) => {
+                const key = `${day.id}-${i}`;
+                const isDone = completed[key] || false;
+                const w = weights[key] || "";
+                const isOpen = expandedEx === i;
 
-                {/* Gün Detayı Başlığı */}
-                <div style={{
-                  background: "#0f0f1c",
-                  border: `1px solid #1a1a28`,
-                  borderLeft: `4px solid ${day.color}`,
-                  borderRadius: 12, padding: "14px 16px", marginBottom: 16,
-                }}>
-                  <div style={{ fontSize: 10, color: day.color, letterSpacing: 2, textTransform: "uppercase", fontWeight: 700, marginBottom: 3 }}>
-                    {day.full}
-                  </div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>
-                    {day.focus}
-                  </div>
-                </div>
-
-                {/* Egzersiz Listesi */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {day.exercises.map((ex, i) => {
-                    const key = `${day.id}-${i}`;
-                    const isDone = completed[key];
-                    const w = weights[key] || "";
-                    const isOpen = expandedEx === i;
-
-                    return (
-                      <div key={i} style={{ 
-                        background: isDone ? "#090912" : "#0f0f1c", 
-                        border: `1px solid ${isDone ? day.color + "20" : "#1a1a28"}`, 
-                        borderRadius: 12, overflow: "hidden", 
-                        opacity: isDone ? 0.6 : 1, transition: "all 0.2s" 
-                      }}>
-                        
-                        <div style={{ padding: "14px", display: "flex", alignItems: "center", gap: 12 }}>
-                          
-                          {/* Checkbox */}
-                          <div onClick={() => toggleComplete(i)} style={{ 
-                            width: 24, height: 24, borderRadius: 8, 
-                            border: `2px solid ${isDone ? day.color : "#2a2a3a"}`, 
-                            background: isDone ? day.color : "transparent", 
-                            flexShrink: 0, cursor: "pointer", display: "flex", 
-                            alignItems: "center", justifyContent: "center", 
-                            fontSize: 13, color: "#000", fontWeight: 800, transition: "all 0.15s" 
-                          }}>
-                            {isDone && "✓"}
-                          </div>
-
-                          {/* İsim ve Bilgiler */}
-                          <div onClick={() => toggleExpand(i)} style={{ flex: 1, minWidth: 0, cursor: "pointer" }}>
-                            <div style={{ 
-                              fontSize: 14, fontWeight: 700, 
-                              color: isDone ? "#555" : "#e2e2e8", 
-                              textDecoration: isDone ? "line-through" : "none", 
-                              marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" 
-                            }}>
-                              {ex.name}
+                exercisesHtml += `
+                    <div style="
+                        background: ${isDone ? "#090912" : "#0f0f1c"}; 
+                        border: 1px solid ${isDone ? day.color + "20" : "#1a1a28"}; 
+                        border-radius: 12px; overflow: hidden; 
+                        opacity: ${isDone ? 0.6 : 1}; transition: all 0.2s;
+                    ">
+                        <div style="padding: 14px; display: flex; align-items: center; gap: 12px;">
+                            
+                            <div onclick="toggleComplete(${i}); event.stopPropagation();" style="
+                                width: 24px; height: 24px; border-radius: 8px; 
+                                border: 2px solid ${isDone ? day.color : "#2a2a3a"}; 
+                                background: ${isDone ? day.color : "transparent"}; 
+                                flex-shrink: 0; cursor: pointer; display: flex; 
+                                align-items: center; justify-content: center; 
+                                font-size: 13px; color: #000; font-weight: 800; transition: all 0.15s;
+                            ">
+                                ${isDone ? "✓" : ""}
                             </div>
-                            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                              <span style={{ fontSize: 11, color: day.color, background: `${day.color}15`, padding: "2px 6px", borderRadius: 4, fontWeight: 600 }}>
-                                {ex.sets}x{ex.reps}
-                              </span>
-                              <span style={{ fontSize: 11, color: "#666" }}>
-                                {ex.target}
-                              </span>
-                            </div>
-                          </div>
 
-                          {/* KG Giriş Alanı */}
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <input 
-                              type="text" 
-                
+                            <div onclick="toggleExpand(${i})" style="flex: 1; min-width: 0; cursor: pointer;">
+                                <div style="
+                                    font-size: 14px; font-weight: 700; 
+                                    color: ${isDone ? "#666" : "#e2e2e8"}; 
+                                    text-decoration: ${isDone ? "line-through" : "none"}; 
+                                    margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                                ">
+                                    ${ex.name}
+                                </div>
+                                <div style="display: flex; gap: 6px; align-items: center;">
+                                    <span style="font-size: 11px; color: ${day.color}; background: ${day.color}15; padding: 2px 6px; border-radius: 4px; font-weight: 600;">
+                                        ${ex.sets}x${ex.reps}
+                                    </span>
+                                    <span style="font-size: 11px; color: #888;">
+                                        ${ex.target}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <input 
+       
